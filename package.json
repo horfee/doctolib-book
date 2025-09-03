@@ -1,0 +1,32 @@
+{
+  "name": "doctolib-book",
+  "version": "1.0.0",
+  "description": "Tool to reserve automatically an appointment",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/horfee/doctolib-book.git"
+  },
+  "keywords": [
+    "doctolib",
+    "auto",
+    "appointment",
+    "booking"
+  ],
+  "author": "horfee",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/horfee/doctolib-book/issues"
+  },
+  "homepage": "https://github.com/horfee/doctolib-book#readme",
+  "dependencies": {
+    "mocha": "^11.7.2",
+    "selenium-webdriver": "^4.35.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0"
+  }
+}
