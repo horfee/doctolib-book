@@ -1,5 +1,6 @@
 const {By, Builder, Browser} = require('selenium-webdriver');
 let chrome = require('selenium-webdriver/chrome');
+let firefox = require('selenium-webdriver/firefox');
 const readline = require('readline');
 require("./logging.ts");
 
@@ -19,6 +20,7 @@ const askQuestion = (question) => {
 
 
 const args = process.argv.slice(2); // skip node + script name
+let browser = Browser.FIREFOX;
 
 const options = { 
     username: "",
@@ -26,6 +28,7 @@ const options = {
 };
 const BYPASS_AUTH = false;
 
+let headlessOptions = null;
 
 for (let i = 0; i < args.length; i++) {
   if ( args[i] === "-bypassauth" ) {
@@ -33,6 +36,19 @@ for (let i = 0; i < args.length; i++) {
   } else if ( args[i] === "-loglevel" && i + 1 < args.length ) {
     global.logLevel = args[i + 1];
     i++; // skip value
+  } else if ( args[i] === "--headless" ) {
+
+    if ( browser === Browser.FIREFOX ) {
+      headlessOptions = new firefox.Options();
+      headlessOptions.addArguments("-headless");
+    } else if ( browser === Browser.CHROME ) {
+      headlessOptions = new chrome.Options();
+      headlessOptions.addArguments("--headless");
+      headlessOptions.addArguments("--no-sandbox");        
+      headlessOptions.windowSize({width: 1400, height: 2100});
+      headlessOptions.addArguments('user-agent="MQQBrowser/26 Mozilla/5.0 (Linux; U; Android 2.3.7; zh-cn; MB200 Build/GRJ22; CyanogenMod-7) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"')
+    }
+
   } else if (args[i].startsWith('-')) {
     options[args[i].substring(1).toLowerCase()] = args[i + 1]; // take next value
     i++; // skip value
@@ -67,7 +83,12 @@ async function findElementWithText(driver, cssSelector, text) {
   
   try {
     console.debug("Starting browser");
-    driver = await new Builder().forBrowser(Browser.CHROME).build();
+    if ( browser === Browser.FIREFOX ) {
+      driver = await new Builder().forBrowser(Browser.FIREFOX).setFirefoxOptions(headlessOptions).build();//.setChromeOptions(headlessOptions).build();
+    } else if ( browser === Browser.CHROME ) {
+      driver = await new Builder().forBrowser(Browser.CHROME).setChromeOptions(headlessOptions).build();
+    }
+
     await driver.manage().setTimeouts({implicit: 1000});
 
     await driver.get('https://www.doctolib.fr/');
@@ -130,6 +151,14 @@ async function findElementWithText(driver, cssSelector, text) {
       }
       console.debug("Clicking on continue button");
       await continueButton[0].click();
+
+      // let errorMessage = await findElementWithText(driver, "#error-message", "Trop de tentatives de connexion, veuillez réessayer dans 1 minute.");
+      // if ( errorMessage !== undefined ) {
+      //     console.log("Waiting 1 minute due to too many login attempts");
+      //     await driver.sleep(61000);
+      //     console.log("Submitting username again");
+      //     await continueButton[0].click();
+      // }
 
       console.debug("Searching for password field");
       let passwordField = await driver.findElement(By.id('input_:r0:'));
@@ -359,6 +388,6 @@ async function findElementWithText(driver, cssSelector, text) {
   } catch (e) {
     console.error(e)
   } finally {
-    await driver.quit();
+    //await driver.quit();
   }
 }())
