@@ -26,8 +26,8 @@ const options = {
     username: "",
     password: ""
 };
-const BYPASS_AUTH = false;
 
+let BYPASS_AUTH = false;
 let headlessOptions = null;
 
 for (let i = 0; i < args.length; i++) {
@@ -37,7 +37,6 @@ for (let i = 0; i < args.length; i++) {
     global.logLevel = args[i + 1];
     i++; // skip value
   } else if ( args[i] === "--headless" ) {
-
     if ( browser === Browser.FIREFOX ) {
       headlessOptions = new firefox.Options();
       headlessOptions.addArguments("-headless");
@@ -152,14 +151,6 @@ async function findElementWithText(driver, cssSelector, text) {
       console.debug("Clicking on continue button");
       await continueButton[0].click();
 
-      // let errorMessage = await findElementWithText(driver, "#error-message", "Trop de tentatives de connexion, veuillez réessayer dans 1 minute.");
-      // if ( errorMessage !== undefined ) {
-      //     console.log("Waiting 1 minute due to too many login attempts");
-      //     await driver.sleep(61000);
-      //     console.log("Submitting username again");
-      //     await continueButton[0].click();
-      // }
-
       console.debug("Searching for password field");
       let passwordField = await driver.findElement(By.id('input_:r0:'));
     
@@ -216,50 +207,63 @@ async function findElementWithText(driver, cssSelector, text) {
     } // END OF BYPASS_AUTH
 
 
-    let searchBarInput = await driver.findElement(By.css('input.searchbar-input'));
-    if ( options.doctor === undefined || options.doctor === "" ) {
-      options.doctor = await askQuestion('Doctor name ? ');
-    }
-    await searchBarInput.sendKeys(options.doctor);
+    let doctors = null;
+    let index = -1;
+    do {
+      doctors = [];
+      let searchBarInput = await driver.findElement(By.css('input.searchbar-input'));
+      if ( options.doctor === undefined || options.doctor === "" ) {
+        options.doctor = await askQuestion('Doctor name ? ');
+      }
+      await searchBarInput.clear();
+      await searchBarInput.sendKeys(options.doctor);
 
-    let searchBarButton = await driver.findElement(By.css('button.searchbar-submit-button'));
-    if ( searchBarButton === undefined ) {
-        console.error("Search button not found");
+      let searchBarButton = await driver.findElement(By.css('button.searchbar-submit-button'));
+      if ( searchBarButton === undefined ) {
+          console.error("Search button not found");
+          return 1;
+      }
+
+      console.debug("Clicking on search button");
+      await searchBarButton.click();
+      await driver.sleep(2000);
+
+      let resultsCards = await driver.findElements(By.css('article.search-result-card'));
+      if ( resultsCards === undefined || resultsCards.length == 0 ) {
+          console.error("No search results found");
+          return 1;
+      }
+
+      
+      for(let card of resultsCards) {
+        let text = await card.getText();
+        let textLines = text.split('\n');
+        textLines.splice(1, 1);
+        textLines.splice(4,2);
+        doctors.push( {
+          title: textLines.join(', '),
+          element: card,
+          selectDoctorButton: await(card.findElement(By.css("a.dl-p-doctor-result-link")))
+        }); 
+      }
+
+      for(let i = 0; i < doctors.length; i++) {
+        console.log( (i+1) + ") " + doctors[i].title);
+      }
+      
+      console.log('0) Reset');
+      const doctorIndex = await askQuestion('Which doctor ? (number) ');
+      index = parseInt(doctorIndex);
+      if ( isNaN(index) || index < 0 || index > doctors.length ) {
+        console.error("Invalid doctor index");
         return 1;
-    }
-
-    console.debug("Clicking on search button");
-    await searchBarButton.click();
-
-    let resultsCards = await driver.findElements(By.css('article.search-result-card'));
-    if ( resultsCards === undefined || resultsCards.length == 0 ) {
-        console.error("No search results found");
-        return 1;
-    }
-
-    const doctors = [];
-    for(let card of resultsCards) {
-      let text = await card.getText();
-      let textLines = text.split('\n');
-      textLines.splice(1, 1);
-      textLines.splice(4,2);
-      doctors.push( {
-        title: textLines.join(', '),
-        element: card,
-        selectDoctorButton: await(card.findElement(By.css("a.dl-p-doctor-result-link")))
-      }); 
-    }
-
-    for(let i = 0; i < doctors.length; i++) {
-      console.log( (i+1) + ": " + doctors[i].title);
-    }
+      }
+      index = index - 1; // to have 0 based index
+      if ( index == -1 ) {
+        options.doctor = "";
+      }
+    } while( index == -1 );
     
-    const doctorIndex = await askQuestion('Which doctor ? (number) ');
-    const index = parseInt(doctorIndex) - 1;
-    if ( isNaN(index) || index < 0 || index >= doctors.length ) {
-      console.error("Invalid doctor index");
-      return 1;
-    }
 
     console.log("Selecting doctor: " + doctors[index].title);
     await doctors[index].selectDoctorButton.click();
@@ -372,7 +376,8 @@ async function findElementWithText(driver, cssSelector, text) {
     }
     console.debug("Clicking on first available slot button");
     await firstSlotAvailableButton.click();
-
+    await driver.sleep(500);
+    
     let confirmButton = await findElementWithText(driver, "button:has( > span)", "j'ai lu et j'accepte les consignes");
     if ( confirmButton === undefined || confirmButton.length == 0 ) {
         console.error("Confirm button not found");
