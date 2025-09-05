@@ -39,6 +39,7 @@ for (let i = 0; i < args.length; i++) {
   } else if ( args[i] === "--headless" ) {
     if ( browser === Browser.FIREFOX ) {
       headlessOptions = new firefox.Options();
+      headlessOptions.windowSize({width: 1400, height: 2100});
       headlessOptions.addArguments("-headless");
     } else if ( browser === Browser.CHROME ) {
       headlessOptions = new chrome.Options();
@@ -243,7 +244,7 @@ async function findElementWithText(driver, cssSelector, text) {
         doctors.push( {
           title: textLines.join(', '),
           element: card,
-          selectDoctorButton: await(card.findElement(By.css("a.dl-p-doctor-result-link")))
+          selectDoctorButton: ( await findElementWithText(card,"a.dl-p-doctor-result-link", "Prendre rendez-vous") )[0]
         }); 
       }
 
@@ -266,6 +267,10 @@ async function findElementWithText(driver, cssSelector, text) {
     
 
     console.log("Selecting doctor: " + doctors[index].title);
+    //await driver.executeScript("arguments[0].style.backgroundColor = \"red\"", doctors[index].selectDoctorButton);
+    
+    await driver.executeScript('arguments[0].scrollIntoView({ behavior: "instant", block: "end", inline: "nearest" });', doctors[index].element);
+    //await driver.actions().scroll(0, 0, 0, 0, doctors[index].selectDoctorButton).perform();
     await doctors[index].selectDoctorButton.click();
 
 
@@ -376,7 +381,7 @@ async function findElementWithText(driver, cssSelector, text) {
     }
     console.debug("Clicking on first available slot button");
     await firstSlotAvailableButton.click();
-    await driver.sleep(500);
+    await driver.sleep(2000);
     
     let confirmButton = await findElementWithText(driver, "button:has( > span)", "j'ai lu et j'accepte les consignes");
     if ( confirmButton === undefined || confirmButton.length == 0 ) {
