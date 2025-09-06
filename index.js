@@ -36,7 +36,7 @@ for (let i = 0; i < args.length; i++) {
   } else if ( args[i] === "-loglevel" && i + 1 < args.length ) {
     global.logLevel = args[i + 1];
     i++; // skip value
-  } else if ( args[i] === "--headless" ) {
+  } else if ( args[i] === "-headless" ) {
     if ( browser === Browser.FIREFOX ) {
       headlessOptions = new firefox.Options();
       headlessOptions.windowSize({width: 1400, height: 2100});
@@ -212,28 +212,38 @@ async function findElementWithText(driver, cssSelector, text) {
     let index = -1;
     do {
       doctors = [];
-      let searchBarInput = await driver.findElement(By.css('input.searchbar-input'));
-      if ( options.doctor === undefined || options.doctor === "" ) {
-        options.doctor = await askQuestion('Doctor name ? ');
-      }
-      await searchBarInput.clear();
-      await searchBarInput.sendKeys(options.doctor);
 
-      let searchBarButton = await driver.findElement(By.css('button.searchbar-submit-button'));
-      if ( searchBarButton === undefined ) {
-          console.error("Search button not found");
-          return 1;
-      }
 
-      console.debug("Clicking on search button");
-      await searchBarButton.click();
-      await driver.sleep(2000);
+      let doctorNoResult = true;
+      let resultsCards = null;
+      do {
+        let searchBarInput = await driver.findElement(By.css('input.searchbar-input'));
+        if ( options.doctor === undefined || options.doctor === "" ) {
+          options.doctor = await askQuestion('Doctor name ? ');
+        }
+        await searchBarInput.clear();
+        await searchBarInput.sendKeys(options.doctor);
 
-      let resultsCards = await driver.findElements(By.css('article.search-result-card'));
-      if ( resultsCards === undefined || resultsCards.length == 0 ) {
-          console.error("No search results found");
-          return 1;
-      }
+        let searchBarButton = await driver.findElement(By.css('button.searchbar-submit-button'));
+        if ( searchBarButton === undefined ) {
+            console.error("Search button not found");
+            return 1;
+        }
+
+        console.debug("Clicking on search button");
+        await searchBarButton.click();
+        await driver.sleep(2000);
+
+        resultsCards = await driver.findElements(By.css('article.search-result-card'));
+        if ( resultsCards === undefined || resultsCards.length == 0 ) {
+            console.error("No search results found");
+            options.doctor = "";
+            doctorNoResult = true;
+        } else {
+            doctorNoResult = false;
+        }
+      } while(doctorNoResult);
+
 
       
       for(let card of resultsCards) {
@@ -393,6 +403,13 @@ async function findElementWithText(driver, cssSelector, text) {
 
 
     confirmButton = await findElementWithText(driver, "button:has( > span)", "confirmer le rendez-vous");
+    if ( confirmButton === undefined || confirmButton.length == 0 ) {
+        console.error("Confirm button not found");
+        return 1;
+    }
+    console.debug("Clicking on confirm button");
+    await confirmButton[0].click();
+
 
     console.info("Booking should be complete");
   } catch (e) {
