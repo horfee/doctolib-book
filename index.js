@@ -378,7 +378,7 @@ async function findElementWithText(driver, cssSelector, text) {
             break;
           }
         }
-        await driver.sleep(1000);
+        await driver.sleep(3000);
       }
       
     } while(!mustStop);
